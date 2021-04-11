@@ -41,8 +41,8 @@
     },
     "_scale": {
       "__type__": "cc.Vec3",
-      "x": 0.5749999999999986,
-      "y": 0.5749999999999986,
+      "x": 0.4205078125,
+      "y": 0.4205078125,
       "z": 1
     },
     "_quat": {
@@ -1356,7 +1356,8 @@
     },
     "_enabled": true,
     "gameTime": 60,
-    "blockTime": 3,
+    "blockTime": 15,
+    "blockPointCount": 15,
     "blockWidth": 100,
     "blockHeight": 100,
     "blockOpacity": 255,
@@ -1416,6 +1417,14 @@
     "pipePosArray": null,
     "pipeNodeArray": null,
     "lockWaitArea": 0,
+    "firstPipe": null,
+    "lastPipe": null,
+    "currenttPipe": null,
+    "nextPipe": null,
+    "currentPosArr": null,
+    "currentPosIdx": -1,
+    "graphicsLineNode": null,
+    "graphicsLine": null,
     "_id": "f5WTpcqKxMK6hKVKDXOja4"
   }
 ]

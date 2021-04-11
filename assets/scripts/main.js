@@ -18,7 +18,11 @@ cc.Class({
             type: cc.Integer,
         },
         blockTime: { // 每個格子幾秒鐘通過
-            default: 3,
+            default: 5,
+            type: cc.Integer,
+        },
+        blockPointCount: { // 每個格子多少個座標點
+            default: 5,
             type: cc.Integer,
         },
         blockWidth: { // 每個格子寬度
@@ -189,6 +193,43 @@ cc.Class({
             type: cc.Integer,
             visible: false,
         },
+        firstPipe: {
+            default: null,
+            visible: false,
+        },
+        lastPipe: {
+            default: null,
+            visible: false,
+        },
+        currenttPipe: {
+            default: null,
+            visible: false,
+        },
+        nextPipe: {
+            default: null,
+            visible: false,
+        },
+        currentPosArr: {
+            default: null,
+            visible: false,
+        },
+        currentPosIdx: {
+            default: -1,
+            visible: false,
+        },
+
+        currentPosArr: {
+            default: null,
+            visible: false,
+        },
+        graphicsLineNode: {
+            default: null,
+            visible: false,
+        },
+        graphicsLine: {
+            default: null,
+            visible: false,
+        },
     },
 
 
@@ -236,6 +277,12 @@ cc.Class({
             this.delPipeIdx = -1;
             this.pipePosArray = [];
             this.pipeNodeArray = [];
+            this.firstPipe = null;
+            this.lastPipe = null;
+            this.currenttPipe = null;
+            this.nextPipe = null;
+            this.currentPosArr = []; // 目前格子裡面有哪耶座標, 由起始點到結束點
+            this.currentPosIdx = -1; // 當前 pipe執行到哪一個座標點
         }
 
         this.node.on(cc.Node.EventType.MOUSE_MOVE, this.mouseMove, this);
@@ -297,7 +344,7 @@ cc.Class({
         }
 
         { // 儲存水管資訊
-            this.pipePosArray[row][col].mode = mode;
+            this.pipePosArray[row][col] = mode;
         }
     },
 
@@ -370,8 +417,8 @@ cc.Class({
      * @return 该条贝塞尔曲线上的点（二维坐标）
      */
     //  function bezierCalculate(poss:Array<Point>, precision:number) {
-    bezierCalculate(poss, precision) { // 不包含頭尾
-        // precision-=1;
+    bezierCalculate(poss, precision) { // 包含頭尾
+        precision -= 1;
 
         //维度，坐标轴数（二维坐标，三维坐标...）
         let dimersion = 2;
@@ -402,7 +449,7 @@ cc.Class({
         }
 
         //计算坐标点
-        for (let i = 1; i < precision; i++) {
+        for (let i = 0; i <= precision; i++) {
             let t = i / precision;
             // let p = new Point(0, 0);
             let p = {
@@ -429,69 +476,6 @@ cc.Class({
     update(dt) {
         if (this.gameStage != 2) {
             return;
-        }
-
-        let timeout = true; // 是否時間到開始流動水
-        if (timeout) { // 繪製水流 // TODO
-            /**
-                this.pipePosArray[row][col] 二維陣列 
-                 
-                結構內容:
-                    mode: null,
-                    in: { x: 0, y: 0 }, // 入口
-                    out: { x: 0, y: 0 }, // 出口
-                    posArray: []
-            */
-
-            { //  計算 this.pipePosArray 裡面每一個 in和 out和 posArray路徑
-
-            }
-
-            { // 將格子轉換成水流的路線座標 // TODO pipePosArray
-
-
-                // let inPos;
-                // let outPos;
-
-                // let halfWidth = this.blockWidth / 2;
-                // let halfHeight = this.blockHeight / 2;
-
-                // switch (mode) { // TODO 水管的 in和 out需要水流時才能計算
-                //     case "LL":
-                //         inPos = { x: x, y: y };
-                //         outPos = { x: x, y: y };
-                //         break;
-                //     case "LR":
-                //         inPos = { x: x, y: y };
-                //         outPos = { x: x, y: y };
-                //         break;
-                //     case "UL":
-                //         inPos = { x: x, y: y };
-                //         outPos = { x: x, y: y };
-                //         break;
-                //     case "UR":
-                //         inPos = { x: x, y: y };
-                //         outPos = { x: x, y: y };
-                //         break;
-                //     case "E":
-                //         inPos = { x: x, y: y };
-                //         outPos = { x: x, y: y };
-                //         break;
-                //     case "N":
-                //         inPos = { x: x, y: y };
-                //         outPos = { x: x, y: y };
-                //         break;
-                // }
-
-                // var poss = [
-                //     { x: inPos.x, y: inPos.y }, // in
-                //     { x: x, y: y }, // 中心點
-                //     { x: outPos.x, y: outPos.y }, // out
-                // ];
-
-                // this.pipePosArray[row][col].mode = mode;
-
-            }
         }
 
         { // 繪製水管等待區
@@ -560,71 +544,418 @@ cc.Class({
             { // 掉落新的水管
                 let currentPipeCount = this.waitAreaPipeArray.length;
                 let waitAreaPipeCount = this.row - currentPipeCount; // 等待區缺幾個水管
-                if (waitAreaPipeCount <= 0) {
-                    return;
-                }
+                if (waitAreaPipeCount > 0) {
+                    for (let i = 0; i < waitAreaPipeCount; i++) { // 水管出現由最上面依序處理到最下面
+                        this.lockWaitArea += 1;
 
-                for (let i = 0; i < waitAreaPipeCount; i++) { // 水管出現由最上面依序處理到最下面
-                    this.lockWaitArea += 1;
+                        let p = this.randPipeBlock(); // 隨機取出一種水管
+                        let pipe = p.pipe;
+                        let mode = p.mode;
+                        // console.log("pipe: " + pipe);
 
-                    let p = this.randPipeBlock(); // 隨機取出一種水管
-                    let pipe = p.pipe;
-                    let mode = p.mode;
-                    // console.log("pipe: " + pipe);
+                        this.waitAreaPipeArray.push(pipe);
+                        this.waitAreaMaskNode.addChild(pipe);
 
-                    this.waitAreaPipeArray.push(pipe);
-                    this.waitAreaMaskNode.addChild(pipe);
+                        { // 初始化水管(大小、位置)
+                            // 初始位置
+                            let srcX = 0;
+                            let srcY = 0 + (maskHeight / 2) + (this.blockHeight / 2);
 
-                    { // 初始化水管(大小、位置)
-                        // 初始位置
-                        let srcX = 0;
-                        let srcY = 0 + (maskHeight / 2) + (this.blockHeight / 2);
+                            // 目標位置位置
+                            let targetX = srcX;
+                            // let targetY = 0 - (maskHeight / 2) + (this.blockHeight / 2) + (i * this.blockHeight);
+                            let targetY = srcY - (waitAreaPipeCount * this.blockHeight) + (i * this.blockHeight);
 
-                        // 目標位置位置
-                        let targetX = srcX;
-                        // let targetY = 0 - (maskHeight / 2) + (this.blockHeight / 2) + (i * this.blockHeight);
-                        let targetY = srcY - (waitAreaPipeCount * this.blockHeight) + (i * this.blockHeight);
-
-                        let t = this.pipleDelay; // 水管移動到達指定位置所需的時間
-                        // let delay = (i * t); // 幾秒後開始動畫
-                        // let delay = ((idx + 1) * t) + (i * t); // 幾秒後開始動畫
-                        let delay = (i * t);
-                        if (idx >= 0) { // 先等待幾秒, 讓已存在的先往下掉落
-                            // let count = this.row - (idx + 1) - 1; // 目前還剩下幾個水管
-                            let count = this.row - (idx + 1); // 目前還剩下幾個水管
-                            delay = (count * t) + (i * t);
-                            // console.log("delay " + delay + ", idx:" + idx);
-                        }
-
-                        pipe.position = cc.v2(srcX, srcY);
-                        pipe.width = this.blockWidth;
-                        pipe.height = this.blockHeight;
-
-                        { // 播放水管掉落動畫
-                            let self = this;
-                            let playTween = function() {
-                                cc.tween(pipe)
-                                    .to(t, { position: cc.v2(targetX, targetY) }, { easing: 'sineIn' })
-                                    .call(() => { // 更新水管狀態, 允許玩家使用 
-                                        pipe.getComponent('block').initPipe(self, mode);
-                                        self.lockWaitArea -= 1;
-                                    })
-                                    .start();
+                            let t = this.pipleDelay; // 水管移動到達指定位置所需的時間
+                            // let delay = (i * t); // 幾秒後開始動畫
+                            // let delay = ((idx + 1) * t) + (i * t); // 幾秒後開始動畫
+                            let delay = (i * t);
+                            if (idx >= 0) { // 先等待幾秒, 讓已存在的先往下掉落
+                                // let count = this.row - (idx + 1) - 1; // 目前還剩下幾個水管
+                                let count = this.row - (idx + 1); // 目前還剩下幾個水管
+                                delay = (count * t) + (i * t);
+                                // console.log("delay " + delay + ", idx:" + idx);
                             }
 
-                            if (delay <= 0) {
-                                playTween();
-                            } else {
-                                // console.log(typeof pipe)
-                                pipe.getComponent("block").scheduleOnce(function() { // 每個元件各自計時
+                            pipe.position = cc.v2(srcX, srcY);
+                            pipe.width = this.blockWidth;
+                            pipe.height = this.blockHeight;
+
+                            { // 播放水管掉落動畫
+                                let self = this;
+                                let playTween = function() {
+                                    cc.tween(pipe)
+                                        .to(t, { position: cc.v2(targetX, targetY) }, { easing: 'sineIn' })
+                                        .call(() => { // 更新水管狀態, 允許玩家使用 
+                                            pipe.getComponent('block').initPipe(self, mode);
+                                            self.lockWaitArea -= 1;
+                                        })
+                                        .start();
+                                }
+
+                                if (delay <= 0) {
                                     playTween();
-                                }, delay);
+                                } else {
+                                    // console.log(typeof pipe)
+                                    pipe.getComponent("block").scheduleOnce(function() { // 每個元件各自計時
+                                        playTween();
+                                    }, delay);
+                                }
                             }
                         }
                     }
                 }
             }
         }
+
+        let timeout = true; // 是否時間到開始流動水
+        if (timeout) { // 繪製水流
+            /**
+                this.pipePosArray[row][col] = mode 
+            */
+
+            /**
+
+            倒數計時完成後, 水流開始流動,
+            水開始流動之前, 會先初始化一個格子, 確認起始點, 還有終端路徑, 還有下一個格子預計為哪一個位置和類型
+
+             */
+
+            // ---------------------------
+            let changePipe = false; // 是否換下一個水管
+
+            if (this.currenttPipe != null && this.currentPosIdx == this.currentPosArr.length - 1) { // 目前的水管已經跑完
+                changePipe = true;
+                // console.log("找下一個水管");
+            } else if (this.currenttPipe == null) { // 初始化
+                changePipe = true;
+                this.nextPipe = this.firstPipe;
+                // console.log("初始化");
+            }
+
+            let changeSuccessful = false;
+            if (changePipe) {
+                { // 計算下一個 this.nextPipe
+                    let nextRow;
+                    let nextCol;
+                    let currentExit;
+
+                    if (this.currenttPipe == null) {
+                        nextRow = -1;
+                        nextCol = 0;
+                        currentExit = "down";
+                    } else {
+                        // 下一個水管的 row和 col必須為何
+                        nextRow = this.currenttPipe.row;
+                        nextCol = this.currenttPipe.col;
+                        currentExit = this.currenttPipe.exit;
+                    }
+
+                    let nextEntrance; // 下一個水管的入口必須為何
+
+                    switch (currentExit) {
+                        case "top":
+                            nextRow -= 1;
+                            nextEntrance = "down";
+                            break;
+                        case "down":
+                            nextRow += 1;
+                            nextEntrance = "top";
+                            break;
+                        case "left":
+                            nextCol -= 1;
+                            nextEntrance = "right";
+                            break;
+                        case "right":
+                            nextCol += 1;
+                            nextEntrance = "left";
+                            break;
+                    }
+
+                    // console.log("下一個水管資訊:" + nextRow, nextCol, nextEntrance);
+
+                    if (nextRow >= 0 && nextRow < this.row && nextCol >= 0 && nextCol < this.col) {
+                        let vaild = false;
+
+                        let mode = this.pipePosArray[nextRow][nextCol];
+                        let entrance = nextEntrance;
+                        let exit = "";
+
+                        switch (nextEntrance) {
+                            case "top":
+                                if (mode == "N" || mode == "UL" || mode == "UR") {
+                                    vaild = true;
+                                    if (mode == "N") {
+                                        exit = "down";
+                                    } else if (mode == "UL") {
+                                        exit = "left";
+                                    } else if (mode == "UR") {
+                                        exit = "right";
+                                    }
+                                }
+                                break;
+                            case "down":
+                                if (mode == "N" || mode == "LL" || mode == "LR") {
+                                    vaild = true;
+                                    if (mode == "N") {
+                                        exit = "top";
+                                    } else if (mode == "LL") {
+                                        exit = "left";
+                                    } else if (mode == "LR") {
+                                        exit = "right";
+                                    }
+                                }
+                                break;
+                            case "left":
+                                if (mode == "E" || mode == "LL" || mode == "UL") {
+                                    vaild = true;
+                                    if (mode == "E") {
+                                        exit = "right";
+                                    } else if (mode == "LL") {
+                                        exit = "down";
+                                    } else if (mode == "UL") {
+                                        exit = "top";
+                                    }
+                                }
+                                break;
+                            case "right":
+                                if (mode == "E" || mode == "LR" || mode == "UR") {
+                                    vaild = true;
+                                    if (mode == "E") {
+                                        exit = "left";
+                                    } else if (mode == "LR") {
+                                        exit = "down";
+                                    } else if (mode == "UR") {
+                                        exit = "top";
+                                    }
+                                }
+                                break;
+                        }
+
+                        // console.log("確認是否有下一個水管:" + vaild);
+
+                        this.nextPipe = null;
+
+                        if (vaild) {
+                            console.log("目前水管更新為:" + nextRow + "," + nextCol);
+
+                            changeSuccessful = true;
+
+                            // this.currenttPipe = this.nextPipe;
+                            // this.nextPipe = { row: nextRow, col: nextCol, mode: mode, entrance: entrance, exit: exit };
+                            this.currenttPipe = { row: nextRow, col: nextCol, mode: mode, entrance: entrance, exit: exit };
+                            this.currentPosIdx = -1;
+
+                            { // 計算 this.currenttPipe的每一個座標寫入到 this.currentPosArr 
+                                let frameWidth = ((this.col + 1) * this.blockWidth) + (this.frameStrokeWidth * 3);
+                                let frameHeight = (this.row * this.blockHeight) + (this.frameStrokeWidth * 2);
+
+                                let baseX = 0 - (frameWidth / 2) + this.frameStrokeWidth + (this.blockWidth / 2);
+                                let baseY = 0 + (frameHeight / 2) - this.frameStrokeWidth - (this.blockHeight / 2);
+
+                                // 水管的中心點
+                                let x = baseX + (nextCol * this.blockWidth);
+                                let y = baseY - (nextRow * this.blockHeight);
+
+                                let entranceX = x;
+                                let entranceY = y;
+
+                                let exitX = x;
+                                let exitY = y;
+
+                                let halfWidth = this.blockHeight / 2;
+                                let halfHeight = this.blockWidth / 2;
+
+                                switch (entrance) {
+                                    case "top":
+                                        entranceY += halfHeight;
+                                        break;
+                                    case "down":
+                                        entranceY -= halfHeight;
+                                        break;
+                                    case "left":
+                                        entranceX -= halfWidth;
+                                        break;
+                                    case "right":
+                                        entranceX += halfWidth;
+                                        break;
+                                }
+
+                                switch (exit) {
+                                    case "top":
+                                        exitY += halfHeight;
+                                        break;
+                                    case "down":
+                                        exitY -= halfHeight;
+                                        break;
+                                    case "left":
+                                        exitX -= halfWidth;
+                                        break;
+                                    case "right":
+                                        exitX += halfWidth;
+                                        break;
+                                }
+
+                                // console.log("entrance:" + entrance, ", exit:" + exit);
+                                // console.log("entranceX:" + entranceX, ", entranceY:" + entranceY);
+                                // console.log("x:" + x, ", y:" + y);
+                                // console.log("exitX:" + exitX, ", exitY:" + exitY);
+
+                                var poss = [
+                                    { x: entranceX, y: entranceY },
+                                    { x: x, y: y },
+                                    { x: exitX, y: exitY },
+                                ];
+
+                                this.currentPosArr = this.bezierCalculate(poss, this.blockPointCount) // 每個水管包含頭尾共有幾個座標點 
+                                this.currentPosArr = this.currentPosArr.slice(1);
+                                let arr = this.currentPosArr;
+
+                                // let self = this;
+                                // let printPoint = function(x, y, fillColor) {
+                                //     // console.log("point: " + x + ", " + y);
+
+                                //     var name = "circle" + i;
+                                //     var node = new cc.Node(name);
+                                //     self.node.addChild(node);
+                                //     var ctx = node.addComponent(cc.Graphics);
+                                //     ctx.circle(x, y, 3);
+
+                                //     // let fillColor = cc.Color.RED; //宣告一個顏色變數
+                                //     fillColor.a = 200; //新增透明度
+                                //     ctx.fillColor = fillColor; //填充
+                                //     ctx.strokeColor = new cc.Color().fromHEX('#66FFE6');
+                                //     // ctx.stroke();
+                                //     ctx.fill();
+                                //     return;
+                                // }
+
+                                // for (var i = 0; i < arr.length; i++) {
+                                //     let color = cc.Color.RED;
+                                //     if (i == 0) {
+                                //         color = cc.Color.BLUE;
+                                //     } else if (i == arr.length - 1) {
+                                //         color = cc.Color.GREEN;
+                                //     }
+                                //     printPoint(arr[i].x, arr[i].y, color);
+                                //     // this.graphics.lineTo(arr[i].x, arr[i].y);
+                                //     // this.graphics.stroke();
+                                // }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (changePipe && !changeSuccessful) {
+                let pass = (this.currenttPipe.row == this.row - 1 && this.currenttPipe.col == this.col - 1);
+                console.log("過關:" + (pass ? "true" : "false"));
+
+                if (pass) { // win
+
+                } else { // game over
+
+                }
+
+                this.stageEnd();
+                return;
+            }
+
+            { // 計時
+                this.tmp += dt;
+                if (this.tmp < (this.blockTime / this.blockPointCount)) {
+                    return;
+                }
+                this.tmp = 0;
+            }
+
+            // console.log("t  ", this.blockTime, this.blockPointCount, (this.blockTime / this.blockPointCount));
+
+            { // 水流向下一個座標
+                if (this.graphicsLineNode == null) { // 初始化路線 Graphics
+                    this.graphicsLineNode = new cc.Node("graphicsNode");
+                    this.node.addChild(this.graphicsLineNode);
+
+                    this.graphicsLine = this.graphicsLineNode.addComponent(cc.Graphics);
+
+                    // ctx.lineCap = cc.Graphics.LineCap.BUTT; //默认。 向线条的每个末端添加平直的边缘
+                    // this.graphicsLine.lineCap = cc.Graphics.LineCap.ROUND; //向线条的每个末端添加圆形线帽
+                    // ctx.lineCap = cc.Graphics.LineCap.SQUARE; // 向线条的每个末端添加正方形线帽
+
+                    // this.graphicsLine.lineJoin = cc.Graphics.LineJoin.ROUND; // 通过填充一个额外的，圆心在相连部分末端的扇形，绘制拐角的形状。 圆角的半径是线段的宽度。
+                    // ctx.lineJoin = cc.Graphics.LineJoin.BEVEL; // 在相连部分的末端填充一个额外的以三角形为底的区域， 每个部分都有各自独立的矩形拐角。
+                    // ctx.lineJoin = cc.Graphics.LineJoin.MITER; // 通过延伸相连部分的外边缘，使其相交于一点，形成一个额外的菱形区域。
+
+                    // ctx.miterLimit = 100;
+
+                    // let fillColor = cc.Color.RED; //宣告一個顏色變數
+                    // fillColor.a = 200; //新增透明度
+                    // this.ctx2.fillColor = fillColor; //填充
+                    this.graphicsLine.strokeColor = new cc.Color().fromHEX('#66FFE6');
+                    this.graphicsLine.lineWidth = 45;
+
+                    let frameWidth = ((this.col + 1) * this.blockWidth) + (this.frameStrokeWidth * 3);
+                    let frameHeight = (this.row * this.blockHeight) + (this.frameStrokeWidth * 2);
+
+                    let x = 0 - (frameWidth / 2) + this.frameStrokeWidth + (this.blockWidth / 2);
+                    let y = 0 + (frameHeight / 2) - this.frameStrokeWidth; // - (this.blockHeight / 2);
+
+                    this.graphicsLine.moveTo(x, y);
+                    this.graphicsLineNode.zIndex = cc.macro.MAX_ZINDEX; // 讓元件顯示在最上層 // XXX
+                }
+
+                this.currentPosIdx += 1;
+                let pos = this.currentPosArr[this.currentPosIdx];
+
+                console.log("繪製座標索引(" + this.currentPosIdx + ") x:" + pos.x + ", y:" + pos.y); //+ ", " + (new Date()));
+
+                // for (let i = 0; i < 5; i++) {
+                //     this.graphicsLine.lineTo(-255 + 30, 200 - (i * 50));
+                //     this.graphicsLine.stroke();
+                // }
+
+                this.graphicsLine.lineTo(pos.x, pos.y);
+                this.graphicsLine.stroke();
+
+                {
+                    let self = this;
+                    let printPoint = function(x, y, fillColor) {
+                        // console.log("point: " + x + ", " + y);
+
+                        var name = "circle" + x + "_" + y;
+                        var node = new cc.Node(name);
+                        self.node.addChild(node);
+                        var ctx = node.addComponent(cc.Graphics);
+                        ctx.circle(x, y, 3);
+
+                        // let fillColor = cc.Color.RED; //宣告一個顏色變數
+                        fillColor.a = 200; //新增透明度
+                        ctx.fillColor = fillColor; //填充
+                        ctx.strokeColor = new cc.Color().fromHEX('#66FFE6');
+                        // ctx.stroke();
+                        ctx.fill();
+                        return;
+                    }
+
+                    // printPoint(pos.x, pos.y, cc.Color.RED);
+                    // printPoint(-255, 200, cc.Color.RED);
+
+                    // for (var i = 0; i < arr.length; i++) {
+                    //     let color = cc.Color.RED;
+                    //     if (i == 0) {
+                    //         color = cc.Color.BLUE;
+                    //     } else if (i == arr.length - 1) {
+                    //         color = cc.Color.GREEN;
+                    //     }
+                    //     printPoint(arr[i].x, arr[i].y, color);
+                    //     // this.graphics.lineTo(arr[i].x, arr[i].y);
+                    //     // this.graphics.stroke();
+                    // }
+                }
+            }
+        }
+
+
     },
 
     stageWait() { // 等待開始階段 
@@ -636,6 +967,21 @@ cc.Class({
         this.labTimeInfo.active = false;
         this.pipePosArray = [];
 
+        this.firstPipe = { row: 0, col: 0, mode: "N", entrance: "top", exit: "down" };
+        this.lastPipe = { row: this.row - 1, col: this.col - 1, mode: "N", entrance: "top", exit: "down" };
+        this.currenttPipe = null;
+        this.nextPipe = null;
+        this.currentPosArr = []; // 目前格子裡面有哪耶座標, 由起始點到結束點
+        this.currentPosIdx = -1; // 當前 pipe執行到哪一個座標點
+
+        if (this.graphicsLineNode != null) {
+            this.graphicsLineNode.destroy();
+            this.graphicsLine = null;
+            this.graphicsLineNode = null;
+        }
+
+
+
         { // 清除格子
             for (let i = 0; i < this.graphicsNodeArray.length; i++) {
                 this.graphicsNodeArray[i].destroy();
@@ -645,20 +991,20 @@ cc.Class({
 
         { //  格子 nodepool
             for (let i = 0; i < this.blockArray.length; i++) {
-                this.blockPool.put(this.blockArray[i]) // XXX  this.putObj(obj.pipe, obj.mode);
+                this.blockPool.put(this.blockArray[i])
             }
             this.blockArray = [];
         }
 
         { // 清除等待區的水管
             for (let i = 0; i < this.waitAreaPipeArray.length; i++) {
-                this.waitAreaPipeArray[i].destroy(); // XXX  this.putObj(obj.pipe, obj.mode);
+                this.waitAreaPipeArray[i].destroy();
             }
             this.waitAreaPipeArray = [];
         }
 
         { // 等待區的背景
-            if (this.waitAreaMaskNode != null) { // XXX  this.putObj(obj.pipe, obj.mode);
+            if (this.waitAreaMaskNode != null) {
                 this.waitAreaMaskNode.destroy();
             }
             this.waitAreaMaskNode = null;
@@ -666,7 +1012,7 @@ cc.Class({
 
         { // 清除被選中的水管
             if (this.selectedPipe != null) {
-                this.selectedPipe.pipe.destroy(); // XXX  this.putObj(obj.pipe, obj.mode);
+                this.selectedPipe.pipe.destroy();
             }
             this.selectedPipe = null;
         }
@@ -695,15 +1041,12 @@ cc.Class({
             for (let row = 0; row < this.row; row++) {
                 let arr = [];
                 for (let col = 0; col < this.col; col++) {
-                    arr.push({
-                        mode: null,
-                        in: { x: 0, y: 0 }, // 入口
-                        out: { x: 0, y: 0 }, // 出口
-                        posArray: [], // 入口和出口之間的座標(不包含入口和出口)
-                    })
+                    arr.push(null);
                 }
                 this.pipePosArray.push(arr);
             }
+            this.pipePosArray[0][0] = "N";
+            this.pipePosArray[this.row - 1][this.col - 1] = "N";
         }
 
         { // 繪製邊框
@@ -773,7 +1116,7 @@ cc.Class({
                 let count = this.row * this.col;
                 for (let i = 0; i < count; i++) {
                     let block;
-                    if (this.blockPool.size() > 0) { // XXX getObj
+                    if (this.blockPool.size() > 0) {
                         block = this.blockPool.get();
                     } else {
                         this.newPipeBlock(this.blockPool, "block", initCount);

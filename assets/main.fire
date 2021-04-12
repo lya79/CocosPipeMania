@@ -41,8 +41,8 @@
     },
     "_scale": {
       "__type__": "cc.Vec3",
-      "x": 0.4205078125,
-      "y": 0.4205078125,
+      "x": 0.36687972403020935,
+      "y": 0.36687972403020935,
       "z": 1
     },
     "_quat": {
@@ -88,6 +88,9 @@
       },
       {
         "__id__": 31
+      },
+      {
+        "__id__": 32
       }
     ],
     "_prefab": null,
@@ -1355,14 +1358,16 @@
       "__id__": 2
     },
     "_enabled": true,
-    "gameTime": 60,
-    "blockTime": 15,
-    "blockPointCount": 15,
-    "blockWidth": 100,
-    "blockHeight": 100,
+    "gameTime": 10,
+    "blockTime": 6,
+    "blockPointCount": 20,
+    "blockWidth": 80,
+    "blockHeight": 80,
     "blockOpacity": 255,
-    "row": 4,
-    "col": 6,
+    "row": 5,
+    "col": 8,
+    "frameStrokeWidth": 10,
+    "lineWidth": 30,
     "labTimeInfo": {
       "__id__": 28
     },
@@ -1396,6 +1401,9 @@
     "prefabBlockN": {
       "__uuid__": "bf86597c-b2b6-4131-b47c-3bc7087cfc83"
     },
+    "prefabArrowDown": {
+      "__uuid__": "89b83668-77d2-4281-a48f-86023193a3d2"
+    },
     "blockPool": null,
     "blockLLPool": null,
     "blockLRPool": null,
@@ -1408,7 +1416,6 @@
     "waitAreaPipeArray": null,
     "waitAreaMaskNode": null,
     "gameStage": 0,
-    "frameStrokeWidth": 10,
     "pipleDelay": 0.5,
     "selectedPipe": null,
     "currentX": 0,
@@ -1425,6 +1432,24 @@
     "currentPosIdx": -1,
     "graphicsLineNode": null,
     "graphicsLine": null,
+    "started": false,
+    "gameState": false,
+    "resultInfo": null,
+    "prefabArrowDownIn": null,
+    "prefabArrowDownOut": null,
     "_id": "f5WTpcqKxMK6hKVKDXOja4"
+  },
+  {
+    "__type__": "cc.Animation",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 2
+    },
+    "_enabled": true,
+    "_defaultClip": null,
+    "_clips": [],
+    "playOnLoad": false,
+    "_id": "cf8jA73TFHUIvOTq932oZc"
   }
 ]

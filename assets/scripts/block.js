@@ -64,6 +64,8 @@ cc.Class({
         }
 
         this.node.off(cc.Node.EventType.MOUSE_DOWN, this.press, this);
+
+        // this.mouseleave();
     },
 
     getMode() {
@@ -71,7 +73,14 @@ cc.Class({
     },
 
     press() {
-        if (this.mode == "block" && this.idleBlock) {
+        if (this.main.getGameStage() != 2) {
+            return;
+        }
+
+        if (this.mode == "block") {
+            if (!this.idleBlock) {
+                return;
+            }
             let ok = this.main.selectBlock(this.row, this.col);
             // console.log("press" + this.row + "," + this.col + ",  ok:" + ok);
             if (ok) {
@@ -84,6 +93,10 @@ cc.Class({
     },
 
     mouseenter() {
+        if (this.main.getGameStage() != 2) {
+            return;
+        }
+
         if (!this.idleBlock) {
             return
         }

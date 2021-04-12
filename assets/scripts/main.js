@@ -45,6 +45,14 @@ cc.Class({
             default: 6,
             type: cc.Integer,
         },
+        frameStrokeWidth: { // 邊框厚度
+            default: 10,
+            type: cc.Integer,
+        },
+        lineWidth: { // 水流寬度
+            default: 43,
+            type: cc.Integer,
+        },
 
         /** node */
         labTimeInfo: { // 倒數計時訊息
@@ -90,6 +98,10 @@ cc.Class({
             type: cc.Prefab,
         },
         prefabBlockN: { // 水管 垂直
+            default: null,
+            type: cc.Prefab,
+        },
+        prefabArrowDown: { // 箭頭
             default: null,
             type: cc.Prefab,
         },
@@ -150,10 +162,6 @@ cc.Class({
         },
         gameStage: { // 遊戲階段
             default: 0,
-            visible: false,
-        },
-        frameStrokeWidth: { // 邊框厚度
-            default: 10,
             visible: false,
         },
         pipleDelay: { // 水管掉落等待區的延遲時間
@@ -217,7 +225,6 @@ cc.Class({
             default: -1,
             visible: false,
         },
-
         currentPosArr: {
             default: null,
             visible: false,
@@ -227,6 +234,26 @@ cc.Class({
             visible: false,
         },
         graphicsLine: {
+            default: null,
+            visible: false,
+        },
+        started: { // 水流開始
+            default: false,
+            visible: false,
+        },
+        gameState: { // T:win F:lose
+            default: false,
+            visible: false,
+        },
+        resultInfo: {
+            default: null,
+            visible: false,
+        },
+        prefabArrowDownIn: {
+            default: null,
+            visible: false,
+        },
+        prefabArrowDownOut: {
             default: null,
             visible: false,
         },
@@ -608,8 +635,7 @@ cc.Class({
             }
         }
 
-        let timeout = true; // 是否時間到開始流動水
-        if (timeout) { // 繪製水流
+        if (this.started) { // 繪製水流
             /**
                 this.pipePosArray[row][col] = mode 
             */
@@ -810,37 +836,6 @@ cc.Class({
                                 this.currentPosArr = this.bezierCalculate(poss, this.blockPointCount) // 每個水管包含頭尾共有幾個座標點 
                                 this.currentPosArr = this.currentPosArr.slice(1);
                                 let arr = this.currentPosArr;
-
-                                // let self = this;
-                                // let printPoint = function(x, y, fillColor) {
-                                //     // console.log("point: " + x + ", " + y);
-
-                                //     var name = "circle" + i;
-                                //     var node = new cc.Node(name);
-                                //     self.node.addChild(node);
-                                //     var ctx = node.addComponent(cc.Graphics);
-                                //     ctx.circle(x, y, 3);
-
-                                //     // let fillColor = cc.Color.RED; //宣告一個顏色變數
-                                //     fillColor.a = 200; //新增透明度
-                                //     ctx.fillColor = fillColor; //填充
-                                //     ctx.strokeColor = new cc.Color().fromHEX('#66FFE6');
-                                //     // ctx.stroke();
-                                //     ctx.fill();
-                                //     return;
-                                // }
-
-                                // for (var i = 0; i < arr.length; i++) {
-                                //     let color = cc.Color.RED;
-                                //     if (i == 0) {
-                                //         color = cc.Color.BLUE;
-                                //     } else if (i == arr.length - 1) {
-                                //         color = cc.Color.GREEN;
-                                //     }
-                                //     printPoint(arr[i].x, arr[i].y, color);
-                                //     // this.graphics.lineTo(arr[i].x, arr[i].y);
-                                //     // this.graphics.stroke();
-                                // }
                             }
                         }
                     }
@@ -850,13 +845,7 @@ cc.Class({
             if (changePipe && !changeSuccessful) {
                 let pass = (this.currenttPipe.row == this.row - 1 && this.currenttPipe.col == this.col - 1);
                 console.log("過關:" + (pass ? "true" : "false"));
-
-                if (pass) { // win
-
-                } else { // game over
-
-                }
-
+                this.gameState = pass;
                 this.stageEnd();
                 return;
             }
@@ -892,7 +881,7 @@ cc.Class({
                     // fillColor.a = 200; //新增透明度
                     // this.ctx2.fillColor = fillColor; //填充
                     this.graphicsLine.strokeColor = new cc.Color().fromHEX('#66FFE6');
-                    this.graphicsLine.lineWidth = 45;
+                    this.graphicsLine.lineWidth = this.lineWidth;
 
                     let frameWidth = ((this.col + 1) * this.blockWidth) + (this.frameStrokeWidth * 3);
                     let frameHeight = (this.row * this.blockHeight) + (this.frameStrokeWidth * 2);
@@ -908,11 +897,6 @@ cc.Class({
                 let pos = this.currentPosArr[this.currentPosIdx];
 
                 console.log("繪製座標索引(" + this.currentPosIdx + ") x:" + pos.x + ", y:" + pos.y); //+ ", " + (new Date()));
-
-                // for (let i = 0; i < 5; i++) {
-                //     this.graphicsLine.lineTo(-255 + 30, 200 - (i * 50));
-                //     this.graphicsLine.stroke();
-                // }
 
                 this.graphicsLine.lineTo(pos.x, pos.y);
                 this.graphicsLine.stroke();
@@ -974,13 +958,21 @@ cc.Class({
         this.currentPosArr = []; // 目前格子裡面有哪耶座標, 由起始點到結束點
         this.currentPosIdx = -1; // 當前 pipe執行到哪一個座標點
 
+        this.started = false;
+
         if (this.graphicsLineNode != null) {
             this.graphicsLineNode.destroy();
             this.graphicsLine = null;
             this.graphicsLineNode = null;
         }
 
+        // this.unschedule(this.currentTime);
+        this.unscheduleAllCallbacks(); // 停止全部計時器
 
+        if (this.resultInfo != null) {
+            this.resultInfo.destroy();
+            this.resultInfo = null
+        }
 
         { // 清除格子
             for (let i = 0; i < this.graphicsNodeArray.length; i++) {
@@ -1024,6 +1016,29 @@ cc.Class({
             }
             this.pipeNodeArray = []
         }
+
+        if (this.prefabArrowDownIn != null) {
+            this.prefabArrowDownIn.destroy();
+            this.prefabArrowDownIn = null;
+        }
+
+        if (this.prefabArrowDownOut != null) {
+            this.prefabArrowDownOut.destroy();
+            this.prefabArrowDownOut = null;
+        }
+    },
+
+    updateTime() {
+        if (this.currentTime <= 0) {
+            return;
+        }
+
+        this.currentTime -= 1;
+        this.labTimeInfo.getComponent(cc.Label).string = this.currentTime + "s";
+
+        if (this.currentTime == 0) {
+            this.started = true;
+        }
     },
 
     stagePlaying() { // 遊戲進行中 
@@ -1036,6 +1051,15 @@ cc.Class({
 
         let waitAreaBlockMax = this.row; // 等待區最多顯示幾個水管
         let frameStrokeWidth = this.frameStrokeWidth; // 邊框厚度
+
+        { // 初始化計時器
+            this.currentTime = this.gameTime + 1;
+            this.updateTime();
+            this.schedule(this.updateTime,
+                1, // 每隔 n秒執行一次
+                this.gameTime - 1, // 重複幾次
+                1); // 第一次幾秒後才開始執行
+        }
 
         { // 初始化水流路線陣列
             for (let row = 0; row < this.row; row++) {
@@ -1054,6 +1078,36 @@ cc.Class({
             let frameHeight = (this.row * this.blockHeight) + (frameStrokeWidth * 2);
             let frameX = -(frameWidth / 2);
             let frameY = -(frameHeight / 2);
+
+            { // 箭頭 in
+                let x = 0 - (frameWidth / 2) + frameStrokeWidth + (this.blockWidth / 2);
+                let y = 0 + (frameHeight / 2) + (this.blockWidth / 2);
+                this.prefabArrowDownIn = cc.instantiate(this.prefabArrowDown);
+                this.prefabArrowDownIn.position = cc.v2(x, y);
+                this.prefabArrowDownIn.width = this.blockWidth * 0.5;
+                this.prefabArrowDownIn.height = this.blockHeight * 0.5;
+
+                this.node.addChild(this.prefabArrowDownIn);
+
+                var animState = this.prefabArrowDownIn.getComponent(cc.Animation).play('arrow');
+                animState.wrapMode = cc.WrapMode.Loop;
+                animState.repeatCount = Infinity;
+            }
+
+            { // 箭頭 out
+                let x = 0 + (frameWidth / 2) - (frameStrokeWidth * 2) - this.blockWidth - (this.blockWidth / 2);
+                let y = 0 - (frameHeight / 2) - (this.blockWidth / 2);
+                this.prefabArrowDownOut = cc.instantiate(this.prefabArrowDown);
+                this.prefabArrowDownOut.position = cc.v2(x, y);
+                this.prefabArrowDownOut.width = this.blockWidth * 0.5;
+                this.prefabArrowDownOut.height = this.blockHeight * 0.5;
+
+                this.node.addChild(this.prefabArrowDownOut);
+
+                var animState = this.prefabArrowDownOut.getComponent(cc.Animation).play('arrow');
+                animState.wrapMode = cc.WrapMode.Loop;
+                animState.repeatCount = Infinity;
+            }
 
             { // 繪製整個遊戲區域
                 var node = new cc.Node("FrameNode");
@@ -1150,14 +1204,39 @@ cc.Class({
         }
     },
 
+    getGameStage() {
+        return this.gameStage;
+    },
+
     stageEnd() { // 遊戲結束 
         this.gameStage = 3;
 
         this.layoutTitle.active = false;
-        this.btnReset.active = false;
+        this.btnReset.active = true;
         this.labTimeInfo.active = true;
 
-        // TODO 設定文字訊息
+        this.resultInfo = cc.instantiate(this.prefabInfo);
+        this.resultInfo.getChildByName("info").getComponent(cc.Label).string = (this.gameState ? "STAGE COMPLETED" : "GAME OVER");
+
+        this.node.addChild(this.resultInfo);
+        this.node.position = cc.v2(0, 0);
+
+        // prefabInfo
+
+        this.resultInfo.zIndex = cc.macro.MAX_ZINDEX; // 讓元件顯示在最上層 // XXX
+
+        // STAGE COMPLETED   GAME OVER
+
+        // this.gameState
+
+
+
+        { // 清除被選中的水管
+            if (this.selectedPipe != null) {
+                this.selectedPipe.pipe.destroy();
+            }
+            this.selectedPipe = null;
+        }
     },
 
     putObj(obj, mode) {

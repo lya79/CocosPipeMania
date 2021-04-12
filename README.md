@@ -4,6 +4,7 @@
 使用 cocos creator 2.0.9
 
 ## 運行影片
+https://www.youtube.com/watch?v=e6yYVRCJ8f0
 
 ## 參數設定
 

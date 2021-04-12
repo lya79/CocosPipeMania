@@ -29,8 +29,3 @@ Line Width | 水流寬度
 ### 遊戲畫面
 
 ![遊戲畫面](https://raw.githubusercontent.com/lya79/CocosPipeMania/master/2.PNG)
-
-## 參考
-
-### Graphics+渲染材質
-* https://lamyoung.com/cocos-creator/2020/05/27/ccc-graphic-sprite/
